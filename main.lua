@@ -34,7 +34,7 @@ sim.hight = love.graphics.getHeight() - sim.buffer
 
 sim.parts = 100 -- the total number of parts (helps create a max carrying capacity)
 sim.lilGuys = {}
-
+sim.species = {}
 
 
 
@@ -103,7 +103,14 @@ function sim.makeLilGuy()
     }
   }
   lilGuy.species = makeSpeciesID(lilGuy.traits)
+  if sim.species[lilGuy.species] then
+    sim.species[lilGuy.species] = sim.species[lilGuy.species] + 1
+  else
+    sim.species[lilGuy.species] = 1
+  end
   print(lilGuy.species)
+  print(sim.species[lilGuy.species])
+  
   return lilGuy
 end
 --
@@ -119,7 +126,6 @@ math.randomseed(love.timer.getTime()) -- init late to give a semi-unpredictable 
 
 for i = 1, 10 do 
   table.insert(sim.lilGuys, sim.makeLilGuy())
-  print(sim.lilGuys[#sim.lilGuys].species)
 end
 --
 
@@ -132,6 +138,7 @@ function love.update(dt)
   local d = 0
   for i = 1, #sim.lilGuys do
     if sim.lilGuys[i - d]:update(dt) then
+      sim.species[sim.lilGuys[i - d].species] = sim.species[sim.lilGuys[i - d].species] - 1
       table.remove(sim.lilGuys, i - d)
       d = d + 1
       print("removed 1 lilGuy")
