@@ -18,13 +18,15 @@ sim.buffer = 10
 sim.width = love.graphics.getWidth() - sim.buffer
 sim.hight = love.graphics.getHeight() - sim.buffer
 
-sim.parts = 100 -- the total number of parts (helps create a max carrying capacity)
+sim.parts = 250 -- the total number of parts (helps create a max carrying capacity)
 sim.lilGuys = {}
 sim.speciesCount = {}
 sim.species = {}
 
 
-
+local function clamp(val, min, max)
+  return math.max(min, math.min(max, val))
+end
 
 local function deepCopy(orig)
   local copy = {}
@@ -51,12 +53,13 @@ function sim.evolveLilGuy(oldLilGuy)
   
   local traits = lilGuy.traits
   traits.color = {r = math.random(0, 255), g = math.random(0, 255), b = math.random(0, 255)}
-  traits.stability = traits.stability + (math.random(-10, 10) / 10)
-  traits.reqParts   = traits.reqParts + math.random(-1, 1)
-  traits.cooldown   = traits.cooldown + (math.random(-10, 10) / 10)
-  traits.mutation   = traits.mutation + (math.random(-10, 10) / 10)
+  traits.stability = clamp(traits.stability + (math.random(-10, 10) / 10), sim.minStats.stability, sim.maxStats.stability)
+  traits.reqParts  = clamp(traits.reqParts  + math.random(-1, 1),          sim.minStats.reqParts,  sim.maxStats.reqParts)
+  traits.cooldown  = clamp(traits.cooldown  + (math.random(-10, 10) / 10), sim.minStats.cooldown,  sim.maxStats.cooldown)
+  traits.mutation  = clamp(traits.mutation  + (math.random(-10, 10) / 10), sim.minStats.mutation,  sim.maxStats.mutation)
   lilGuy.traits = traits
   lilGuy.currCooldown = 0
+  
   lilGuy.currDir = math.random(1, 360)
   lilGuy.species = makeSpeciesID(traits)
 
@@ -97,6 +100,7 @@ function sim.lilUpdate(self, dt)
       else
         print("i'm cloning!")
         local child = deepCopy(self)
+        child.neededParts = self.traits.reqParts
         child.currCooldown = self.traits.cooldown
         sim.speciesCount[self.species] = (sim.speciesCount[self.species] or 0) + 1
         table.insert(sim.lilGuys, child)
@@ -117,18 +121,18 @@ end
 
 
 sim.minStats = { -- the min values for stats
-  stability = 1,
-  reqParts = 5,
+  stability = 5,
+  reqParts = 3,
   cooldown = 3,
   mutation = 1
 }
 --
 
 sim.maxStats = { -- the max values for stats
-  stability = 50,
+  stability = 75,
   reqParts = 20,
   cooldown = 20,
-  mutation = 100
+  mutation = 75
 }
 --
 
@@ -147,6 +151,7 @@ function sim.makeLilGuy()
   local lilGuy = {
     update = sim.lilUpdate,
     currCooldown = 0,
+    neededParts,
     currDir = math.random(1, 360),
     x = math.random(sim.buffer, sim.width),
     y = math.random(sim.buffer, sim.hight),
@@ -167,7 +172,7 @@ function sim.makeLilGuy()
     sim.speciesCount[lilGuy.species] = 1
   end
   print(lilGuy.species)
-  
+  lilGuy.neededParts = lilGuy.traits.reqParts
   lilGuy.currCooldown = lilGuy.traits.cooldown
   print(lilGuy.traits.mutation)
   return lilGuy
@@ -194,7 +199,7 @@ end
 
 
 function love.update(dt)
-  sim.parts = math.min(sim.parts + (10 * dt), 100) -- add part regen
+  print(sim.parts)
   
   for i = #sim.lilGuys, 1, -1 do
     if sim.lilGuys[i]:update(dt) then
@@ -203,6 +208,7 @@ function love.update(dt)
       else
         sim.speciesCount[sim.lilGuys[i].species] = nil
       end
+      sim.parts = math.min(sim.parts + sim.lilGuys[i].traits.reqParts, 250)
       table.remove(sim.lilGuys, i)
       print("removed 1 lilGuy")
     end
@@ -217,25 +223,10 @@ end
 
 
 
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-print(math.random(1, 100000) / 1000 < 0.01 * 60)
-
 local width, height
-
 local padding = 60
 
-local r, g, b
+local r, g, b, stats
 local s
 
 function love.draw()
@@ -247,8 +238,10 @@ function love.draw()
   
   for i = 1, #sim.species do 
     s = sim.species[i]
+    stats = s:match("_(.*)")
     r, g, b = s:match("r(%d+)g(%d+)b(%d+)")
     love.graphics.setColor(love.math.colorFromBytes(r, g, b))
     love.graphics.circle("fill", padding + 20, padding + (i * 25), 4)
+    love.graphics.print(stats, padding + 35, padding + (i * 25) - 8)
   end
 end
