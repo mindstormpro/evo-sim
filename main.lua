@@ -18,6 +18,7 @@ sim.historyStart = {}
 sim.historyTimer = 0
 sim.historyInterval = 0.5
 sim.historyTick = 0
+sim.popRecord = 0
 
 sim.buffer = 10
 sim.width = love.graphics.getWidth() - sim.buffer
@@ -212,7 +213,14 @@ function love.update(dt)
     sim.historyTimer = 0
     sim.historyTick = sim.historyTick + 1
     for species, count in pairs(sim.speciesCount) do
-      
+      if not sim.history[species] then
+        sim.history[species] = {}
+        sim.historyStart[species] = sim.historyTick
+      end
+      if sim.popRecord < count then
+        sim.popRecord = count
+      end
+      table.insert(sim.history[species], count)
     end
   end
   
@@ -268,5 +276,18 @@ function love.draw()
     love.graphics.setColor(love.math.colorFromBytes(r, g, b))
     love.graphics.circle("fill", padding + 20, (padding * 2) + 55 + (i * 23), 4)
     love.graphics.print(stats .. " : " .. sim.speciesCount[s], padding + 35, (padding * 2) + 55 + (i * 23) - 8)
+  end
+  local xMax, yMax = sim.historyTick, sim.popRecord
+  local xStep, yStep = ((width - padding) - padding * 2 + 300) / xMax, (height - (padding * 2)) / yMax
+  for species, history in pairs(sim.history) do
+    r, g, b = species:match("r(%d+)g(%d+)b(%d+)")
+    love.graphics.setColor(love.math.colorFromBytes(r, g, b))
+    
+    if sim.historyStart[species] == nil then
+      sim.historyStart[species] = 0
+    end
+    for i = 1, #sim.history[species] do 
+      love.graphics.line(xStep * (i + sim.historyStart[species] - 1) + padding * 2 + 300, (sim.history[species][i - 1] or 0) + height - padding, xStep * (i + sim.historyStart[species]) + padding * 2 + 300, (sim.history[species][i] or 0) + height - padding)
+    end
   end
 end
