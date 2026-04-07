@@ -13,6 +13,11 @@ end
 
 local sim = {}
 
+sim.history = {}
+sim.historyStart = {}
+sim.historyTimer = 0
+sim.historyInterval = 0.5
+sim.historyTick = 0
 
 sim.buffer = 10
 sim.width = love.graphics.getWidth() - sim.buffer
@@ -201,6 +206,15 @@ end
 
 function love.update(dt)
   print(sim.parts)
+  
+  sim.historyTimer = sim.historyTimer + dt
+  if sim.historyTimer >= sim.historyInterval then
+    sim.historyTimer = 0
+    sim.historyTick = sim.historyTick + 1
+    for species, count in pairs(sim.speciesCount) do
+      
+    end
+  end
   
   for i = #sim.lilGuys, 1, -1 do
     if sim.lilGuys[i]:update(dt) then
