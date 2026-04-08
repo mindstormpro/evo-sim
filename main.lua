@@ -91,7 +91,7 @@ end
 function sim.lilUpdate(self, dt)
   
   
-  if math.random(1, 100000) / 1000 < dt * self.traits.stability * 0.15 then
+  if math.random(1, 100000) / 1000 < dt * (sim.maxStats.stability + sim.minStats.stability - self.traits.stability) * 0.15 then
     print("dying!")
     return true
   end
@@ -262,13 +262,23 @@ local s
 function love.draw()
   width, height = love.graphics.getDimensions()
   
-  
+  local graphX = padding * 2 + 300
+  local graphW = (width - padding) - graphX
+  local graphH = (height - padding) - padding
+
+  -- parts counter box
   love.graphics.setColor(love.math.colorFromBytes(255, 255, 255))
   love.graphics.rectangle("line", padding, padding, 300, 55, 20, 20, 25)
   love.graphics.print("Current # of Parts: " .. sim.parts, padding + 10, padding + 20)
-  love.graphics.rectangle("line", padding, (padding * 2) + 55, 300, (height -  3 * padding) - 55, 20, 20, 25)
-  love.graphics.line(padding * 2 + 300, padding, padding * 2 + 300, height - padding, width - padding, height - padding)
-  
+
+  -- species list box
+  love.graphics.setColor(love.math.colorFromBytes(255, 255, 255))
+  love.graphics.rectangle("line", padding, (padding * 2) + 55, 300, (height - 3 * padding) - 55, 20, 20, 25)
+
+  -- graph border lines
+  love.graphics.line(graphX, padding, graphX, height - padding, width - padding, height - padding)
+
+  -- species list entries
   for i = 1, math.min(#sim.species, math.floor(((height - 3 * padding) - 55) / 23)) do
     s = sim.species[i]
     stats = s:match("_(.*)")
@@ -277,17 +287,28 @@ function love.draw()
     love.graphics.circle("fill", padding + 20, (padding * 2) + 55 + (i * 23), 4)
     love.graphics.print(stats .. " : " .. sim.speciesCount[s], padding + 35, (padding * 2) + 55 + (i * 23) - 8)
   end
-  local xMax, yMax = sim.historyTick, sim.popRecord
-  local xStep, yStep = ((width - padding) - padding * 2 + 300) / xMax, (height - (padding * 2)) / yMax
+
+  -- graph
+  local xMax = math.max(sim.historyTick, 1)
+  local yMax = 1
+  for species, history in pairs(sim.history) do
+    for _, count in ipairs(history) do
+      if count > yMax then yMax = count end
+    end
+  end
+
+  local xStep = graphW / xMax
+  local yStep = graphH / yMax
+
   for species, history in pairs(sim.history) do
     r, g, b = species:match("r(%d+)g(%d+)b(%d+)")
     love.graphics.setColor(love.math.colorFromBytes(r, g, b))
-    
-    if sim.historyStart[species] == nil then
-      sim.historyStart[species] = 0
-    end
-    for i = 1, #sim.history[species] do 
-      love.graphics.line(xStep * (i + sim.historyStart[species] - 1) + padding * 2 + 300, (sim.history[species][i - 1] or 0) + height - padding, xStep * (i + sim.historyStart[species]) + padding * 2 + 300, (sim.history[species][i] or 0) + height - padding)
+    for i = 2, #history do
+      local x1 = graphX + xStep * (i - 1 + sim.historyStart[species] - 1)
+      local x2 = graphX + xStep * (i     + sim.historyStart[species] - 1)
+      local y1 = height - padding - (history[i - 1] * yStep)
+      local y2 = height - padding - (history[i]     * yStep)
+      love.graphics.line(x1, y1, x2, y2)
     end
   end
 end
